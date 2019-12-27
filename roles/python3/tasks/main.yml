@@ -1,0 +1,24 @@
+- apt: pkg={{ item }} state=present update_cache=yes
+  with_items:
+    - python3-pip
+
+- pip:
+    name: discord
+    executable: pip3
+    state: latest
+
+- template:
+    src: main.py
+    dest: /home/{{ ansible_user }}/main.py
+    owner: ubuntu
+    group: ubuntu
+    mode: 0755
+  notify: restart discord bot
+
+- template:
+    src: discord.service
+    dest: /etc/systemd/system/discord.service
+
+- template:
+    src: discord.env
+    dest: /home/{{ ansible_user }}/.env

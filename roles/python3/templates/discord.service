@@ -1,0 +1,19 @@
+[Unit]
+Description=Discord bot
+After=syslog.target network.target
+
+[Service]
+WorkingDirectory=/home/{{ ansible_user }}
+Type=simple
+PIDFile=/run/discord.pid
+ExecStart=/usr/bin/python3 /home/{{ ansible_user }}/main.py
+ExecStop=/bin/kill -SIGTERM $MAINPID
+ExecReload=/bin/kill -HUP $MAINPID
+EnvironmentFile=/home/{{ ansible_user }}/.env
+Restart=always
+RestartSec=10
+User=ubuntu
+Group=ubuntu
+
+[Install]
+WantedBy=multi-user.target
