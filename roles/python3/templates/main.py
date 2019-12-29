@@ -18,7 +18,7 @@ async def on_message(message):
         m = message.content[l:]
         if all(ord(r) < 128 for r in m) and len(m) >= 3 and len(m) <= 16:
             c = client.get_channel(618319969163280404)
-            await c.send("新規ユーザー(" + m + ")への対応をしてください http://ccmite.com/admin_top.html")
+            await c.send("新規ユーザー(" + m + ")への対応をしてください http://ccmite.com:8084/ccadmin/user.php?name=" + m)
             await message.channel.send("ありがとうございます :heart: ホワイトリスト追加までしばしお待ちください。")
         else:
             await message.channel.send("プロフィール名はアルファベットと数字、アンダースコアしか使えないよ")
