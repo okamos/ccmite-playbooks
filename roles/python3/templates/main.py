@@ -1,6 +1,7 @@
 import discord
 import os
 import time
+import re
 
 client = discord.Client()
 
@@ -15,10 +16,11 @@ async def on_message(message):
         return
     if client.user in message.mentions:
         l = len(str(client.user.id)) + 5
-        m = message.content[l:]
-        if all(ord(r) < 128 for r in m) and len(m) >= 3 and len(m) <= 16:
+        words = re.split('\s', message.content)
+        print(words)
+        if len(words[1]) >= 3 and len(words[1]) <= 16:
             c = client.get_channel(618319969163280404)
-            await c.send("新規ユーザー(" + m + ")への対応をしてください http://ccmite.com:8084/ccadmin/user.php?name=" + m)
+            await c.send("新規ユーザー(" + words[1] + ")への対応をしてください http://ccmite.com:8084/ccadmin/user.php?name=" + words[1])
             await message.channel.send("ありがとうございます :heart: ホワイトリスト追加までしばしお待ちください。")
         else:
             await message.channel.send("プロフィール名はアルファベットと数字、アンダースコアしか使えないよ")
