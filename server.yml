@@ -5,6 +5,7 @@
   become: yes
   vars_files:
     - ./vaults/discord.yml
+    - ./vaults/twitter.yml
   vars:
     ansible_python_interpreter: /usr/bin/python3
   roles:
