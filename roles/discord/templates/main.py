@@ -1,6 +1,7 @@
 import os
 import time
 import re
+import unicodedata
 import json
 import urllib.request
 import discord
@@ -18,14 +19,24 @@ async def on_message(message):
     if message.author.bot:
         return
     if client.user in message.mentions:
-        l = len(str(client.user.id)) + 5
-        words = re.split('\s', message.content)
-        if len(words[1]) >= 3 and len(words[1]) <= 16:
-            c = client.get_channel(618319969163280404)
-            await c.send("新規ユーザー(" + words[1] + ")への対応をしてください http://ccmite.com:8084/ccadmin/user.php?name=" + words[1])
-            await message.channel.send("ありがとうございます :heart: ホワイトリスト追加までしばしお待ちください。")
-        else:
-            await message.channel.send("プロフィール名はアルファベットと数字、アンダースコアしか使えないよ")
+        for w in re.split('\s', message.content):
+            if w.find(str(client.user.id)) >= 0:
+                continue
+            if len(w) == 0:
+                continue
+            nonNa = False
+            for c in w:
+                if unicodedata.east_asian_width(c) != 'Na':
+                    nonNa = True
+                    break
+            if nonNa:
+                continue
+            if len(w) >= 3 and len(w) <= 16:
+                c = client.get_channel(618319969163280404)
+                await c.send("新規ユーザー(" + w + ")への対応をしてください http://ccmite.com:8084/ccadmin/user.php?name=" + w)
+                await message.channel.send("ありがとうございます" + message.author.name + "さん :heart: ホワイトリスト追加までしばしお待ちください。")
+            else:
+                await message.channel.send("プロフィール名はアルファベットと数字、アンダースコアしか使えないよ")
 
 @client.event
 async def on_member_join(member):
