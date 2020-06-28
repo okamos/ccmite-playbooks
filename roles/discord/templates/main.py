@@ -3,16 +3,43 @@ import time
 import re
 import unicodedata
 import json
+import struct
+import socket
 import urllib.request
 import discord
 from discord.ext import tasks
 
 client = discord.Client()
+host = 'ccmite.com'
 
-@client.event
-async def on_ready():
-    print('Logged in as')
-    print(client.user.name)
+def unpack_varint(s):
+    d = 0
+    for i in range(5):
+        b = ord(s.recv(1))
+        d |= (b & 0x7F) << 7*i
+        if not b & 0x80:
+            break
+    return d
+
+def pack_varint(d):
+    o = bytearray()
+    while True:
+        b = d & 0x7F
+        d >>= 7
+        o += struct.pack("B", b | (0x80 if d > 0 else 0))
+        if d == 0:
+            break
+    return o
+
+def pack_data(d):
+    return pack_varint(len(d)) + d
+
+def pack_port(i):
+    return struct.pack('>H', i)
+
+statusMsg = "%s %sが%sしました"
+webdown = False
+mcdown = False
 
 @client.event
 async def on_message(message):
@@ -79,5 +106,71 @@ async def loop():
     with open(path, mode='w') as f:
         f.write(str(latest))
 
-loop.start()
+@tasks.loop(seconds=60)
+async def webLoop():
+    global webdown
+    c = client.get_channel(726728923315961937)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(3)
+        try:
+            s.connect((host, 80))
+            req = 'GET / HTTP/1.1\r\nHost: %s\r\nAccept: */*\r\n\r\n' % (host)
+            s.send(req.encode('utf-8'))
+            res = s.recv(15).decode('utf-8')
+            s.close()
+            if res == 'HTTP/1.1 200 OK':
+                if webdown == True:
+                    await c.send(statusMsg % (":white_check_mark:", "ウェブサーバー", "復帰"))
+                webdown = False
+            else:
+                if webdown == False:
+                    await c.send(statusMsg % (":x:", "ウェブサーバー", "ダウン"))
+                webdown = True
+        except socket.error as serr:
+            if webdown == False:
+                await c.send(statusMsg % (":x:", "ウェブサーバー", "ダウン"))
+            webdown = True
+
+@tasks.loop(seconds=60)
+async def mcLoop():
+    global mcdown
+    c = client.get_channel(726728923315961937)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(3)
+        try:
+            s.connect((host, 25565))
+            s.send(pack_data(bytes("\x00\x00".encode('utf-8')) + pack_data(bytes(host.encode('utf-8'))) + pack_port(25565) + bytes("\x01".encode('utf-8'))))
+            s.send(pack_data(bytes("\x00".encode('utf-8'))))
+            unpack_varint(s) # Packet length
+            unpack_varint(s) # Packet ID
+            l = unpack_varint(s) # String length
+
+            d = bytearray()
+            while len(d) < l:
+                d += s.recv(1024)
+
+            s.close()
+            json.loads(d.decode('utf-8'))
+            if mcdown == True:
+                await c.send(statusMsg % (":white_check_mark:", "マインクラフトサーバー", "復帰"))
+            mcdown = False
+        except ValueError:
+            print("hoge")
+            if mcdown == False:
+                await c.send(statusMsg % (":x:", "マインクラフトサーバー", "ダウン"))
+            mcdown = True
+        except socket.error:
+            print("hoge")
+            if mcdown == False:
+                await c.send(statusMsg % (":x:", "マインクラフトサーバー", "ダウン"))
+            mcdown = True
+
+@client.event
+async def on_ready():
+    print('Logged in as')
+    print(client.user.name)
+    loop.start()
+    webLoop.start()
+    mcLoop.start()
+
 client.run(os.environ['DISCORD_BOT_API_TOKEN'])
