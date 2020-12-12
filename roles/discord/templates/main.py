@@ -7,11 +7,11 @@ import struct
 import socket
 import urllib.request
 import discord
+import subprocess
 from discord.ext import tasks
 
 client = discord.Client()
 host = 'ccmite.games'
-
 
 def unpack_varint(s):
     d = 0
@@ -43,15 +43,54 @@ def pack_port(i):
 
 
 statusMsg = "%s %sが%sしました"
-webdown = True
-mcdown = True
+addUser = '"source /home/ubuntu/env.sh && nice -n 10 /home/ubuntu/mc/scripts/adduser.sh %s"'
+webdown = False
+mcdown = False
 
 
 @client.event
 async def on_message(message):
     if message.author.bot:
         return
-    if client.user in message.mentions:
+    if message.channel.id == 787290128422141963:
+        ok = False
+        for role in message.author.roles:
+            if role.id == 610873298506743829:
+                ok = True
+        if ok is False:
+            return
+
+        handle = 0
+        for w in re.split(r'\s', message.content):
+            if w.find(str(client.user.id)) >= 0:
+                continue
+            if len(w) == 0:
+                continue
+            nonNa = False
+            for c in w:
+                if unicodedata.east_asian_width(c) != 'Na':
+                    nonNa = True
+                    break
+            if nonNa:
+                continue
+            if w == 'addUser':
+                handle = 1
+                continue
+            if handle == 1 and len(w) >= 3 and len(w) <= 16:
+                cp = subprocess.run('ssh -i /home/ubuntu/.ssh/ccmite_rsa ubuntu@' + host + ' -t ' + addUser % (w), shell=True)
+                if cp.returncode == 0:
+                    c = client.get_channel(608700399880503313)
+                    await message.channel.send("ユーザー追加が完了しました")
+                    await c.send("""
+%s さん、お待たせしました。ホワイトリストに登録完了です。
+これでマイクラサーバーへのログインが可能なりました！
+Discord権限、ガチャ権の付与も完了しましたのでご利用ください！
+                    """ % (w))
+                else:
+                    await message.channel.send("ユーザー追加に失敗しました")
+                return
+    if (message.channel.id == 608700399880503313 and
+            client.user in message.mentions):
         for w in re.split(r'\s', message.content):
             if w.find(str(client.user.id)) >= 0:
                 continue
@@ -66,15 +105,21 @@ async def on_message(message):
                 continue
             if len(w) >= 3 and len(w) <= 16:
                 c = client.get_channel(618319969163280404)
-                await c.send(
-                        "新規ユーザー(" + w +
-                        ")への対応をしてください " +
-                        "http://ccmite.com:8084/ccadmin/user.php?name=" + w)
+                await c.send("""
+新規ユーザーへの対応をお願いします。
+https://www.mcbans.com/player/%s/
+Discordでのユーザーロールにチェック, BAN歴確認後に
+<#787290128422141963>で
+<@!659708908562022402> addUser %s
+を実行してください
+                """ % (w, w))
                 await message.channel.send(
                         "ありがとうございます" + message.author.name +
                         "さん :heart: ホワイトリスト追加までしばしお待ちください。")
+                return
             else:
                 await message.channel.send("プロフィール名はアルファベットと数字、アンダースコアしか使えないよ")
+                return
 
 
 @client.event
