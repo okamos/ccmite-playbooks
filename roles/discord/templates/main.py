@@ -10,7 +10,7 @@ import discord
 from discord.ext import tasks
 
 client = discord.Client()
-host = 'ccmite.com'
+host = 'ccmite.games'
 
 
 def unpack_varint(s):
@@ -43,8 +43,8 @@ def pack_port(i):
 
 
 statusMsg = "%s %sが%sしました"
-webdown = False
-mcdown = False
+webdown = True
+mcdown = True
 
 
 @client.event
