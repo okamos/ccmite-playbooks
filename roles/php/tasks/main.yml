@@ -1,0 +1,31 @@
+---
+  - name: PHP | Add apt-resitory
+    apt_repository:
+      repo: 'ppa:ondrej/php'
+      state: present
+
+  - name: PHP | Install
+    apt:
+      pkg:
+        - php{{ php.version }}-cli
+        - php{{ php.version }}-fpm
+        - php{{ php.version }}-json
+        - php{{ php.version }}-pdo
+        - php{{ php.version }}-mysql
+        - php{{ php.version }}-zip
+        - php{{ php.version }}-gd
+        - php{{ php.version }}-mbstring
+        - php{{ php.version }}-curl
+        - php{{ php.version }}-xml
+        - php{{ php.version }}-bcmath
+        - php{{ php.version }}-json
+        - libapache2-mod-php{{ php.version }}
+      state: latest
+      update_cache: yes
+
+  - name: PHP | Install Composer
+    shell: curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer
+
+  - name: PHP | Send www.conf for fpm
+    template: src=fpm-pool-www.conf dest=/etc/php/{{ php.version }}/fpm/pool.d/www.conf
+    notify: restart php-fpm

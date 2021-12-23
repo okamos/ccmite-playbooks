@@ -1,0 +1,13 @@
+/var/log/nginx/*log {
+    daily
+    missingok
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    create 0644 {{ exec_user|default('ubuntu') }}
+    sharedscripts
+    postrotate
+        /etc/init.d/nginx reopen_logs
+    endscript
+}

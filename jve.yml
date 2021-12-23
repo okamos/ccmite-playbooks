@@ -1,0 +1,13 @@
+- name: jve
+  hosts: jve
+  remote_user: ubuntu
+  gather_facts: true
+  become: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    php:
+      version: 7.4
+  roles:
+    - { role: './roles/prelude' }
+    - { role: './roles/php' }
+    - { role: './roles/nginx' }

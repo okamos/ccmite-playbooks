@@ -1,0 +1,15 @@
+[Unit]
+Description=A high performance web server and a reverse proxy server
+After=syslog.target network.target
+
+[Service]
+Type=forking
+PIDFile=/run/nginx.pid
+ExecStartPre=/home/{{ ansible_user }}/usr/nginx/{{ nginx.version }}/sbin/nginx -t -c /etc/nginx/nginx.conf
+ExecStart=/home/{{ ansible_user }}/usr/nginx/{{ nginx.version }}/sbin/nginx -c /etc/nginx/nginx.conf
+ExecReload=/home/{{ ansible_user }}/usr/nginx/{{ nginx.version }}/sbin/nginx -c /etc/nginx/nginx.conf -s reload
+ExecStop=/home/{{ ansible_user }}/usr/nginx/{{ nginx.version }}/sbin/nginx -c /etc/nginx/nginx.conf -s stop
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,94 @@
+---
+- name: Nginx | install dependencies
+  apt:
+    pkg:
+      - libcurl4-openssl-dev
+      - libgeoip-dev
+      - libgoogle-perftools-dev
+      - libpcre++-dev
+      - libxslt-dev
+      - pkg-config
+      - zlib1g-dev
+    state: present
+
+- name: Nginx | check existing nginx tarball
+  stat: path=/tmp/nginx-{{ nginx.version }}.tar.gz
+  register: nginx_tarball
+
+- name: Nginx | download nginx
+  get_url: url=http://nginx.org/download/nginx-{{ nginx.version }}.tar.gz dest=/tmp
+  when: nginx_tarball.stat.exists == false
+
+- name: Nginx | unarchive nginx
+  unarchive: copy=no src=/tmp/nginx-{{ nginx.version }}.tar.gz dest=/tmp
+
+- name: Nginx | check existing openssl tarball
+  stat: path=/tmp/openssl-{{ nginx.openssl_version }}.tar.gz
+  register: openssl_tarball
+
+- name: Nginx | download openssl
+  get_url: url=https://www.openssl.org/source/openssl-{{ nginx.openssl_version }}.tar.gz dest=/tmp/openssl-{{ nginx.openssl_version }}.tar.gz
+  when: openssl_tarball.stat.exists == false
+
+- name: Nginx | unarchive openssl
+  unarchive: copy=no src=/tmp/openssl-{{ nginx.openssl_version }}.tar.gz dest=/tmp
+
+- name: Nginx | install dir
+  file:
+    path: /home/{{ ansible_user }}/usr/nginx/{{ nginx.version }}
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: 0755
+
+- name: Nginx | configure && make && make install
+  shell: ./configure --prefix=/home/{{ ansible_user }}/usr/nginx/{{ nginx.version }} --with-debug --with-http_addition_module --with-http_dav_module --with-http_geoip_module --with-http_gzip_static_module --with-http_gunzip_module --with-http_random_index_module --with-http_secure_link_module --with-http_degradation_module --with-http_realip_module --with-http_stub_status_module --with-http_ssl_module --with-http_sub_module --with-http_xslt_module --with-ipv6 --with-sha1=/usr/include/openssl --with-md5=/usr/include/openssl --with-mail --with-mail_ssl_module --with-pcre --with-pcre-jit --with-google_perftools_module --with-cc-opt='-O2' --with-http_v2_module --with-openssl=/tmp/openssl-{{ nginx.openssl_version }} && make && make install
+  args:
+    chdir: '/tmp/nginx-{{ nginx.version }}'
+
+- name: Nginx | /etc/nginx
+  file: path=/etc/nginx state=directory owner=root mode=755
+
+- name: Nginx | /etc/nginx/conf.d
+  file: path=/etc/nginx/conf.d state=directory owner=root mode=755
+
+- name: Nginx | /var/log/nginx
+  file: path=/var/log/nginx state=directory owner={{ ansible_user }} group={{ ansible_user }} mode=755
+
+- name: Nginx | Create default directory
+  file:
+    path: /etc/default/nginx
+    state: touch
+    mode: 0644
+    owner: root
+    group: root
+
+- name: Nginx | Add ulimit for parallel accesses
+  lineinfile:
+    path: /etc/default/nginx
+    line: 'ULIMIT="-n 65535"'
+
+- name: Nginx | /etc/logrotate.d/nginx
+  template: src=logrotate.j2 dest=/etc/logrotate.d/nginx
+
+- name: Nginx | /etc/nginx/nginx.conf
+  template: src=nginx.conf dest=/etc/nginx/nginx.conf
+
+- name: Nginx | /etc/nginx/fastcgi_params
+  template: src=fastcgi_params dest=/etc/nginx/fastcgi_params
+
+- name: Nginx | mime.types
+  command: cp /home/{{ ansible_user }}/usr/nginx/{{ nginx.version }}/conf/mime.types /etc/nginx/mime.types
+
+- name: /lib/systemd/system/nginx.service
+  template: src=nginx.service dest=/etc/systemd/system/nginx.service
+
+- name: Nginx | stop apache2
+  service: name=apache2 state=stopped
+  ignore_errors: yes
+
+- name: Nginx | Send default.conf
+  template:
+    src: "jve.conf"
+    dest: /etc/nginx/conf.d/default.conf
+  notify: restart nginx
